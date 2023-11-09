@@ -1,5 +1,6 @@
 class Node {
-  constructor(value, left = null, right = null) {
+  constructor(key, value, left = null, right = null) {
+    this.key = key;
     this.value = value;
     this.left = left;
     this.right = right;
@@ -13,7 +14,9 @@ class Tree {
   }
 
   #buildTree(array) {
-    const sortedArray = [...new Set(array)].sort((a, b) => a - b);
+    const sortedArray = [...array]
+      .sort((a, b) => a[0] - b[0])
+      .filter(([key], i, arr) => i === 0 || arr[i - 1][0] !== key);
     this.#root = this.#createBSTRec(sortedArray);
   }
 
@@ -24,8 +27,8 @@ class Tree {
     const mid = Math.ceil((start + end) / 2);
     const left = this.#createBSTRec(array, start, mid - 1);
     const right = this.#createBSTRec(array, mid + 1, end);
-    const value = array[mid];
-    return new Node(value, left, right);
+    const [key, value] = array[mid];
+    return new Node(key, value, left, right);
   }
 
   prettyPrint() {
@@ -43,7 +46,7 @@ class Tree {
         false
       );
     }
-    console.log(`${prefix}${isLeft ? "└── " : "┌── "}${node.value}`);
+    console.log(`${prefix}${isLeft ? "└── " : "┌── "}${node.key}`);
     if (node.left !== null) {
       this.#prettyPrint(
         node.left,
@@ -53,34 +56,37 @@ class Tree {
     }
   }
 
-  insert(value) {
-    this.#insert(value);
+  insert(key, value) {
+    this.#insert(key, value);
   }
 
-  #insert(value, currentNode = this.#root) {
-    if (currentNode.value === value) return;
+  #insert(key, value, currentNode = this.#root) {
+    if (currentNode.key === key) {
+      currentNode.value = value;
+      return;
+    }
 
-    if (value < currentNode.value) {
+    if (key < currentNode.key) {
       if (!currentNode.left) {
-        currentNode.left = new Node(value);
+        currentNode.left = new Node(key, value);
         return;
       }
-      return this.#insert(value, currentNode.left);
+      return this.#insert(key, value, currentNode.left);
     }
 
     if (!currentNode.right) {
-      currentNode.right = new Node(value);
+      currentNode.right = new Node(key, value);
       return;
     }
-    this.#insert(value, currentNode.right);
+    this.#insert(key, value, currentNode.right);
   }
 
-  delete(value) {
-    // Case when value is in the root
-    if (this.#root && this.#root.value === value) {
+  delete(key) {
+    // Case when key is in the root
+    if (this.#root && this.#root.key === key) {
       return this.#deleteRootNode();
     }
-    return this.#delete(value);
+    return this.#delete(key);
   }
 
   #deleteRootNode() {
@@ -101,83 +107,99 @@ class Tree {
     while (current.left.left) {
       current = current.left;
     }
+    this.#root.key = current.left.key;
     this.#root.value = current.left.value;
     current.left = null;
     return rootValue;
   }
 
-  #delete(value, currentNode = this.#root) {
-    console.log(`value: ${currentNode?.value}`);
-    this.prettyPrint();
-    if (!currentNode) return false;
-    // Value is in the left subtree
-    if (value < currentNode.value) {
-      // Value is deeper than left child
-      if (currentNode.left?.value !== value) {
-        return this.#delete(value, currentNode.left);
-      }
-      // Value is in the left child node
-      const deleteNode = currentNode.left;
+  #delete(key, currentNode = this.#root) {
+    // console.log(`key: ${currentNode?.key}`);
+    // this.prettyPrint();
 
-      // Node to delete doesn't have right child
-      if (!deleteNode.right) {
-        currentNode.left = deleteNode.left;
-        return true;
-      }
-      // Node to delete doesn't have left child
-      if (!deleteNode.left || (deleteNode.left && !deleteNode.right.left)) {
-        currentNode.left = deleteNode.right;
-        return true;
-      }
+    const probablyDeleteNode =
+      key < currentNode?.key ? currentNode?.left : currentNode?.right;
 
-      // Node to delete has both left and right children
-      let parentOfNodeInsteadOfDeletedNode = deleteNode.right;
-      while (parentOfNodeInsteadOfDeletedNode.left.left) {
-        parentOfNodeInsteadOfDeletedNode =
-          parentOfNodeInsteadOfDeletedNode.left;
-      }
-      deleteNode.value = parentOfNodeInsteadOfDeletedNode.left.value;
-      parentOfNodeInsteadOfDeletedNode.left = null;
-      return true;
+    if (!probablyDeleteNode) return null;
+
+    if (probablyDeleteNode?.key !== key) {
+      return this.#delete(key, probablyDeleteNode);
     }
 
-    // Value is in the right subtree
-
-    // Value is deeper than right child
-    if (currentNode.right?.value !== value) {
-      return this.#delete(value, currentNode.right);
-    }
-    // Value is in the right child node
-    const deleteNode = currentNode.right;
-
-    // Node to delete doesn't have right child
-    if (!deleteNode.right) {
-      currentNode.right = deleteNode.left;
-      return true;
-    }
-    // Node to delete doesn't have left child
-    if (!deleteNode.left || (deleteNode.left && !deleteNode.right.left)) {
-      currentNode.left = deleteNode.right;
-      return true;
+    // Node to delete doesn't have one child
+    if (!probablyDeleteNode.right || !probablyDeleteNode.left) {
+      return this.#deleteNodeWithoutOneChild(currentNode, probablyDeleteNode);
     }
 
     // Node to delete has both left and right children
-    let parentOfNodeInsteadOfDeletedNode = deleteNode.right;
-    while (parentOfNodeInsteadOfDeletedNode.left.left) {
-      parentOfNodeInsteadOfDeletedNode = parentOfNodeInsteadOfDeletedNode.left;
+    return this.#deleteNodeWithBothChildren(probablyDeleteNode);
+  }
+
+  #deleteNodeWithBothChildren(deleteNode) {
+    if (!deleteNode.left || !deleteNode.right) return null;
+    const deleteValue = deleteNode.value;
+
+    if (!deleteNode.right.left) {
+      const replaceNodeFields = { ...deleteNode.right, left: deleteNode.left };
+      Object.assign(deleteNode, replaceNodeFields);
+
+      return deleteValue;
     }
-    deleteNode.value = parentOfNodeInsteadOfDeletedNode.left.value;
-    parentOfNodeInsteadOfDeletedNode.left = null;
-    return true;
+
+    let parentNode = deleteNode.right;
+    while (parentNode.left.left) {
+      parentNode = parentNode.left;
+    }
+    const [key, value] = [parentNode.left.key, parentNode.left.value];
+    Object.assign(deleteNode, { key, value });
+    parentNode.left = null;
+
+    return deleteValue;
+  }
+
+  #deleteNodeWithoutOneChild(parentNode, deleteNode) {
+    const deleteValue = deleteNode.value;
+    const nodeInsteadOfDeleted = deleteNode.left
+      ? deleteNode.left
+      : deleteNode.right;
+
+    if (deleteNode === parentNode.left) {
+      parentNode.left = nodeInsteadOfDeleted;
+    } else if (deleteNode === parentNode.right) {
+      parentNode.right = nodeInsteadOfDeleted;
+    }
+    return deleteValue;
   }
 }
 
-const tree = new Tree([1, 7, 4, 23, 8, 9, 4, 3, 5, 7, 9, 67, 6345, 324]);
+const tree = new Tree(
+  [1, 7, 4, 23, 8, 9, 4, 3, 5, 7, 9, 67, 6345, 324].map((i) => [i, i * 100])
+);
+
 tree.prettyPrint();
+
 tree.insert(6500);
-tree.insert(80);
+tree.insert(80, 8000);
+console.log("Insert 80:");
+tree.prettyPrint();
+console.log("Delete 80");
+console.log(tree.delete(80));
+tree.prettyPrint();
+console.log("Delete 7");
+console.log(tree.delete(7));
 console.log();
 tree.prettyPrint();
+console.log("delete 4");
+console.log(tree.delete(4));
+console.log();
+tree.prettyPrint();
+
+console.log("delete 324");
+console.log(tree.delete(324));
+console.log();
+tree.prettyPrint();
+
+console.log("delete 67");
 console.log(tree.delete(67));
 console.log();
 tree.prettyPrint();
