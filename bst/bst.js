@@ -13,6 +13,75 @@ class Tree {
     this.#buildTree(array);
   }
 
+  get height() {
+    return this.#height(this.#root);
+  }
+
+  get isBalanced() {
+    return this.#isBalanced(this.#root) !== -1;
+  }
+
+  depth(key) {
+    return this.#depth(key);
+  }
+
+  prettyPrint() {
+    this.#prettyPrint();
+  }
+
+  rebalance() {
+    if (this.isBalanced) {
+      return;
+    }
+    const sortedArray = this.inOrder();
+    this.#root = this.#createBSTRec(sortedArray);
+  }
+
+  insert(key, value) {
+    this.#insert(key, value);
+  }
+
+  delete(key) {
+    // Case when key is in the root
+    if (this.#root && this.#root.key === key) {
+      return this.#deleteRootNode();
+    }
+
+    return this.#delete(key);
+  }
+
+  find(key) {
+    return this.#find(key);
+  }
+
+  levelOrder(processValue = null) {
+    if (!processValue) {
+      return this.#levelOrder();
+    }
+    this.#levelOrderWithCallback(processValue);
+  }
+
+  inOrder(processValue = null) {
+    if (!processValue) {
+      return this.#inOrder();
+    }
+    this.#inOrderWithCallBack(processValue);
+  }
+
+  preOrder(processValue = null) {
+    if (!processValue) {
+      return this.#preOrder();
+    }
+    this.#preOrderWithCallBack(processValue);
+  }
+
+  postOrder(processValue = null) {
+    if (!processValue) {
+      return this.#postOrder();
+    }
+    this.#postOrderWithCallBack(processValue);
+  }
+
   #buildTree(array) {
     const sortedArray = [...array]
       .sort((a, b) => a[0] - b[0])
@@ -29,10 +98,6 @@ class Tree {
     const right = this.#createBSTRec(array, mid + 1, end);
     const [key, value] = array[mid];
     return new Node(key, value, left, right);
-  }
-
-  prettyPrint() {
-    this.#prettyPrint();
   }
 
   #prettyPrint(node = this.#root, prefix = "", isLeft = true) {
@@ -56,10 +121,6 @@ class Tree {
     }
   }
 
-  insert(key, value) {
-    this.#insert(key, value);
-  }
-
   #insert(key, value, currentNode = this.#root) {
     if (currentNode.key === key) {
       currentNode.value = value;
@@ -79,14 +140,6 @@ class Tree {
       return;
     }
     this.#insert(key, value, currentNode.right);
-  }
-
-  delete(key) {
-    // Case when key is in the root
-    if (this.#root && this.#root.key === key) {
-      return this.#deleteRootNode();
-    }
-    return this.#delete(key);
   }
 
   #deleteRootNode() {
@@ -170,36 +223,209 @@ class Tree {
     }
     return deleteValue;
   }
+
+  #find(key, currentNode = this.#root) {
+    if (!currentNode) return null;
+    if (key === currentNode.key) {
+      return currentNode.value;
+    }
+    const child = key < currentNode.key ? "left" : "right";
+    return this.#find(key, currentNode[child]);
+  }
+
+  #inOrderWithCallBack(processValue, currentNode = this.#root) {
+    if (!currentNode) return;
+
+    this.#inOrderWithCallBack(processValue, currentNode.left);
+    processValue(currentNode.key, currentNode.value);
+    this.#inOrderWithCallBack(processValue, currentNode.right);
+
+    return;
+  }
+
+  #inOrder(currentNode = this.#root) {
+    if (!currentNode) return [];
+
+    const inOrderValues = [];
+    inOrderValues.push(...this.#inOrder(currentNode.left));
+    inOrderValues.push([currentNode.key, currentNode.value]);
+    inOrderValues.push(...this.#inOrder(currentNode.right));
+
+    return inOrderValues;
+  }
+
+  #preOrderWithCallBack(processValue, currentNode = this.#root) {
+    if (!currentNode) return;
+
+    processValue(currentNode.key, currentNode.value);
+    this.#preOrderWithCallBack(processValue, currentNode.left);
+    this.#preOrderWithCallBack(processValue, currentNode.right);
+
+    return;
+  }
+
+  #preOrder(currentNode = this.#root) {
+    if (!currentNode) return [];
+    const preOrderValues = [];
+    preOrderValues.push([currentNode.key, currentNode.value]);
+    preOrderValues.push(...this.#preOrder(currentNode.left));
+    preOrderValues.push(...this.#preOrder(currentNode.right));
+
+    return preOrderValues;
+  }
+
+  #postOrderWithCallBack(processValue, currentNode = this.#root) {
+    if (!currentNode) return;
+
+    this.#postOrderWithCallBack(processValue, currentNode.left);
+    this.#postOrderWithCallBack(processValue, currentNode.right);
+    processValue(currentNode.key, currentNode.value);
+
+    return;
+  }
+
+  #postOrder(currentNode = this.#root) {
+    if (!currentNode) return [];
+
+    const postOrderValues = [];
+    postOrderValues.push(...this.#postOrder(currentNode.left));
+    postOrderValues.push(...this.#postOrder(currentNode.right));
+    postOrderValues.push([currentNode.key, currentNode.value]);
+
+    return postOrderValues;
+  }
+
+  #levelOrder() {
+    const queue = this.#root ? [this.#root] : [];
+    let levels = [];
+    let nodesInCurrentLevel = 0;
+    let nodesInNextLevel = 0;
+
+    while (queue.length > 0) {
+      if (nodesInCurrentLevel < 1) {
+        levels.push([]);
+        nodesInCurrentLevel = nodesInNextLevel;
+        nodesInNextLevel = 0;
+      }
+
+      const current = queue.shift();
+      if (current === null) {
+        return levels;
+      }
+      nodesInCurrentLevel--;
+
+      const lastIndex = levels.length - 1;
+      levels[lastIndex].push([current.key, current.value]);
+
+      if (current.left) {
+        queue.push(current.left);
+        nodesInNextLevel++;
+      }
+      if (current.right) {
+        queue.push(current.right);
+        nodesInNextLevel++;
+      }
+    }
+    return levels;
+  }
+
+  #levelOrderWithCallback(processValue) {
+    const queue = this.#root ? [this.#root] : [];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === null) return;
+
+      processValue(current.key, current.value);
+      if (current.left) queue.push(current.left);
+      if (current.right) queue.push(current.right);
+    }
+  }
+
+  #height(node) {
+    if (!node) return 0;
+    return 1 + Math.max(this.#height(node.left), this.#height(node.right));
+  }
+
+  #depth(key, node = this.#root) {
+    if (!node) return -1;
+    if (node.key === key) return 0;
+
+    const child = key < node.key ? node.left : node.right;
+
+    const result = this.#depth(key, child);
+    if (result < 0) return -1;
+
+    return 1 + result;
+  }
+
+  #isBalanced(node) {
+    if (!node) return 0;
+    const leftHeight = this.#isBalanced(node.left);
+    if (leftHeight === -1) return -1;
+    const rightHeight = this.#isBalanced(node.right);
+    if (rightHeight === -1) return -1;
+
+    if (Math.abs(rightHeight - leftHeight) > 1) {
+      return -1;
+    }
+
+    return 1 + Math.max(leftHeight, rightHeight);
+  }
 }
 
-const tree = new Tree(
-  [1, 7, 4, 23, 8, 9, 4, 3, 5, 7, 9, 67, 6345, 324].map((i) => [i, i * 100])
-);
+const randomNumbers = Array(100)
+  .fill()
+  .map((_, i) => [Math.floor(Math.random() * 1000), Math.random()]);
+const tree = new Tree(randomNumbers);
+tree.prettyPrint();
+console.log(tree.isBalanced);
+
+const levels = tree.levelOrder();
+console.log("Levels{");
+levels.forEach((level) => {
+  console.log(level.map((entry) => entry[0]));
+});
+console.log("}Levels");
+
+console.log(tree.preOrder().map((entry) => entry[0]));
+console.log(tree.inOrder().map((entry) => entry[0]));
+console.log(tree.postOrder().map((entry) => entry[0]));
+
+tree.insert(5000, 1);
+tree.insert(5001, 2);
+tree.insert(5002, 3);
+tree.insert(5003, 4);
+tree.insert(5004, 5);
+tree.insert(5006, 7);
 
 tree.prettyPrint();
+console.log(tree.isBalanced);
 
-tree.insert(6500);
-tree.insert(80, 8000);
-console.log("Insert 80:");
+tree.rebalance();
 tree.prettyPrint();
-console.log("Delete 80");
-console.log(tree.delete(80));
-tree.prettyPrint();
-console.log("Delete 7");
-console.log(tree.delete(7));
-console.log();
-tree.prettyPrint();
-console.log("delete 4");
-console.log(tree.delete(4));
-console.log();
-tree.prettyPrint();
+console.log(tree.isBalanced);
 
-console.log("delete 324");
-console.log(tree.delete(324));
-console.log();
-tree.prettyPrint();
+console.log("Levels{");
+levels.forEach((level) => {
+  console.log(level.map((entry) => entry[0]));
+});
+console.log("}Levels");
 
-console.log("delete 67");
-console.log(tree.delete(67));
-console.log();
+console.log(tree.preOrder().map((entry) => entry[0]));
+console.log(tree.inOrder().map((entry) => entry[0]));
+console.log(tree.postOrder().map((entry) => entry[0]));
+
+tree
+  .inOrder()
+  .map((entry) => entry[0])
+  .forEach((key) => {
+    if (key % 2 === 0) tree.delete(key);
+  });
+
 tree.prettyPrint();
+console.log(tree.isBalanced);
+
+tree.rebalance();
+tree.prettyPrint();
+console.log(tree.isBalanced);
